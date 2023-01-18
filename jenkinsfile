@@ -1,3 +1,7 @@
+def buildNumber = BUILD_NUMBER
+
+def imageName = 'abhishekkishor1/maven-web-application'
+
 pipeline {
     
     agent any
@@ -5,6 +9,8 @@ pipeline {
     environment {
         
         IP_ADDRESS = "172.31.7.77"
+        
+        ContainerName = "ff"
         
     }
     
@@ -99,12 +105,72 @@ pipeline {
                 
                 steps {
                     
-                    sh "docker build -t abhishekkishor1/maven-web-application"
+                    sh "docker rmi ${imageName} || true"
+                    
+                    sh "docker images"
+                    
+                    sh "docker images | grep maven-web-application | tr -s ' ' | cut -d ' ' -f 2 |xargs -I {} docker rmi ${imageName}:{}"
+                    
+                    sh "docker images"
+                    
+                    sh "docker build -t abhishekkishor1/maven-web-application:${buildNumber} ."
                     
                 }
                 
             }
             
+            stage("Docker Login & PushImage") {
+                
+                steps {
+                    
+                    script {
+                        
+                        withCredentials([string(credentialsId: 'Docker_Hub_Pwd', variable: 'Docker_Hub_Pwd')]) {
+                            
+                            sh "docker login -u abhishekkishor1 -p ${Docker_Hub_Pwd}"
+                            
+                        }
+                        
+                        sh "docker push abhishekkishor1/maven-web-application:${buildNumber}"
+                        
+                    }
+                    
+                }
+                
+            }
+           
+           stage("Docker Server Login") {
+               
+               steps {
+                   
+                   script {
+                       
+                       sshagent(['Docker_Dev_Server_SSH']) {
+                           
+                           sh "ssh -o StrictHostKeyChecking=no ubuntu@13.215.49.172"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker stop ${ContainerName} || true"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker rm ${ContainerName} || true"
+                           
+                        //   sh "ssh ubuntu@13.215.49.172 docker images | grep maven-web-application | tr -s ' ' | cut -d ' ' -f 2 |xargs -I {} docker rmi ${imageName}:{}"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker pull abhishekkishor1/maven-web-application:${buildNumber}"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker images"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker run -d -p 9090:8080 --name ${ContainerName} ${imageName}:${buildNumber}"
+                           
+                           sh "ssh ubuntu@13.215.49.172 docker ps"
+        
+                       }
+                       
+                   }
+                   
+               }
+               
+           }
+           
         }
     
 }
