@@ -162,6 +162,8 @@ pipeline {
                            sh "ssh ubuntu@13.215.49.172 docker run -d -p 9090:8080 --name ${ContainerName} ${imageName}:${buildNumber}"
                            
                            sh "ssh ubuntu@13.215.49.172 docker ps"
+
+                           echo "++++++++++++++++++++++++++++++Open Server's Link:8080+++++++++++++++++++++++++++++++++"
         
                        }
                        
